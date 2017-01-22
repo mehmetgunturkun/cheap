@@ -33,7 +33,7 @@ case class StringRecord(tag: Byte, length: Int) extends HeapDumpRecord
 object HeapDump {
   def apply(file: File): Option[HeapDump] = {
     try {
-      val fileInputStream = new FileInputStream(file)
+      val fileInputStream: FileInputStream = new FileInputStream(file)
       val dataInputStream: DataInputStream = new DataInputStream(fileInputStream)
 
       val format: String = readFormat(dataInputStream)
@@ -42,7 +42,8 @@ object HeapDump {
 
       val startTime: Long = dataInputStream.readLong()
       val startDate: DateTime = new DateTime(startTime)
-      val heapDump= new HeapDump(format = format, idSize = sizeOfId, startDate = startDate, records = dataInputStream)
+
+      val heapDump = new HeapDump(format = format, idSize = sizeOfId, startDate = startDate, records = dataInputStream)
       Some(heapDump)
     } catch {
       case NonFatal(e) =>
