@@ -15,20 +15,19 @@ class HeapDump(private val format: String,
                private val startDate: DateTime,
                private val records: DataInputStream) {
 
+  def hasNext: Boolean = records.available() > 0
+
   def nextRecord(): HeapDumpRecord = {
     val tag: Byte = records.readByte()
+    val heapDumpTag: HeapDumpRecordTag = HeapDumpRecordTag(tag)
+
     val ts: Int = records.readInt()
     val length: Int = records.readInt()
-    StringRecord(tag, length)
+
+    val record = HeapDumpRecord(heapDumpTag, idSize, length, records)
+    record
   }
 }
-
-sealed trait HeapDumpRecord {
-  def tag: Byte
-  def length: Int
-}
-
-case class StringRecord(tag: Byte, length: Int) extends HeapDumpRecord
 
 object HeapDump {
   def apply(file: File): Option[HeapDump] = {
