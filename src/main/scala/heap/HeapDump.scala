@@ -5,6 +5,7 @@ import java.io.{DataInputStream, File, FileInputStream}
 import org.joda.time.DateTime
 
 import scala.collection.mutable.ArrayBuffer
+import scala.collection.mutable.{Map => MMap}
 import scala.util.control.NonFatal
 
 /**
@@ -64,3 +65,5 @@ object HeapDump {
     format
   }
 }
+
+case class Class(objectId: Long, className: String)

@@ -2,7 +2,7 @@ package test
 
 import java.io.File
 
-import heap.{HeapDump, StringRecord}
+import heap.{HeapDump, HeapDumpRecordTag, StringRecord}
 
 /**
   * Created by mehmetgunturkun on 22/01/17.
@@ -14,10 +14,20 @@ object HeapDumpTest {
 
     maybeHeapDump match {
       case Some(heapDump) =>
-        val record = heapDump.nextRecord()
-        record match {
-          case strRec@StringRecord(tag, length) => println(strRec)
+        val dumpRecordMap = collection.mutable.Map.empty[HeapDumpRecordTag, Int]
+
+        while (heapDump.hasNext) {
+          val record = heapDump.nextRecord()
+          record match {
+            case r =>
+              val value = dumpRecordMap.getOrElse(r.tag, 0)
+              dumpRecordMap.put(r.tag, value + 1)
+              println(r)
+          }
         }
+
+        println(dumpRecordMap)
+
       case None =>
         println("There is no heap dump to parse")
     }

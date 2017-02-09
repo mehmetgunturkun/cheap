@@ -28,10 +28,20 @@ object HeapDumpRecord {
     }
   }
 
-  private def parseDefaultRecord(tag: HeapDumpRecordTag, idSize: Int, length: Int, stream: DataInputStream): HeapDumpRecord = {
-    val arr: Array[Byte] = Array.ofDim[Byte](length)
-    stream.read(arr)
+  private def consume(data: DataInputStream, length: Int): Unit = {
+    val nrOfSlots: Int = length / 1000
+    val remainingBytes = length - (nrOfSlots * 1000)
 
+    val arr: Array[Byte] = Array.ofDim[Byte](1000)
+    for (i <- 0 until nrOfSlots) {
+      data.read(arr)
+    }
+
+    data.read(arr, 0, remainingBytes)
+  }
+
+  private def parseDefaultRecord(tag: HeapDumpRecordTag, idSize: Int, length: Int, stream: DataInputStream): HeapDumpRecord = {
+    consume(stream, length)
     new HeapDumpRecord(tag, length)
   }
 
@@ -43,7 +53,10 @@ object HeapDumpRecord {
     val arr: Array[Byte] = Array.ofDim[Byte](contentLength)
     stream.read(arr)
 
-    StringRecord(content = new String(arr), length)
+    StringRecord(
+      stringId = stringId,
+      content = new String(arr),
+      length = length)
   }
 
   private def parseLoad(idSize: Int, length: Int, data: DataInputStream): LoadClassRecord = {
@@ -98,13 +111,10 @@ object HeapDumpRecord {
       length = length
     )
   }
-
-  private def parseHeapDump(idSize: Long, length: Int, data: DataInputStream): StackTraceRecord = {
-
-  }
 }
 
-case class StringRecord(content: String,
+case class StringRecord(stringId: Long,
+                        content: String,
                         override val length: Int) extends HeapDumpRecord(StringTag, length)
 
 case class LoadClassRecord(classSerialNumber: Int,
@@ -129,3 +139,13 @@ case class StackTraceRecord(stackTraceSerialNumber: Int,
                             nrOfFrames: Int,
                             stackTraceIds: Array[Long],
                             override val length: Int) extends HeapDumpRecord(StartThreadTag, length)
+
+//case class ClassDump(classObjectId: Long,
+//                     stackTraceSerialNumber: Int,
+//                     superClassObjectId: Long,
+//                     classLoaderObjectId: Long,
+//                     signersObjectId: Long,
+//                     protectionDomainObjectId: Long,
+//                     reserved1: Long,
+//                     reserved2: Long,
+//                     instanceSize: Int)

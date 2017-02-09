@@ -13,3 +13,4 @@ libraryDependencies += "joda-time" % "joda-time" % "2.9.1"
 
 libraryDependencies += "org.specs2" %% "specs2-core" % "3.8.7" % "test"
 
+libraryDependencies += "org.http4s" %% "http4s" % "0.1"
