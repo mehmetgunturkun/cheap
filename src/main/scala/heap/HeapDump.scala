@@ -1,69 +1,49 @@
 package heap
 
-import java.io.{DataInputStream, File, FileInputStream}
-
-import org.joda.time.DateTime
-
-import scala.collection.mutable.ArrayBuffer
-import scala.collection.mutable.{Map => MMap}
-import scala.util.control.NonFatal
+import heap.records._
 
 /**
-  * Created by mehmetgunturkun on 22/01/17.
+  * Created by mehmetgunturkun on 12/02/17.
   */
-class HeapDump(private val format: String,
-               private val idSize: Int,
-               private val startDate: DateTime,
-               private val records: DataInputStream) {
+class HeapDump(val stream: HeapDumpStream) {
 
-  def hasNext: Boolean = records.available() > 0
+  loadCommonMaps()
+
+  def hasNext = stream.hasNext
+
+  private def loadCommonMaps(): Unit = {
+    def iterateUntilHeapDump(f: HeapDumpRecord => Unit): Unit = {
+      val record: HeapDumpRecord = nextInternalRecord()
+      println(record)
+      record.tag match {
+        case HeapDumpStartTag => {}
+        case other =>
+          f(record)
+          iterateUntilHeapDump(f)
+      }
+    }
+
+    iterateUntilHeapDump { other => }
+  }
+
+  private def nextInternalRecord(): HeapDumpRecord = {
+    val tagByte = stream.read()
+    val tag: HeapDumpRecordTag = HeapDumpInternalRecordTag(tagByte)
+
+    val ts: Int = stream.readInt()
+    val length: Int = stream.readInt()
+
+    HeapDumpRecord(tag, length, stream)
+  }
 
   def nextRecord(): HeapDumpRecord = {
-    val tag: Byte = records.readByte()
-    val heapDumpTag: HeapDumpRecordTag = HeapDumpRecordTag(tag)
+    val tagByte = stream.read()
+    val tag: HeapDumpRecordTag = HeapDumpRecordTag(tagByte)
 
-    val ts: Int = records.readInt()
-    val length: Int = records.readInt()
+    val ts: Int = stream.readInt()
+    val length: Int = stream.readInt()
 
-    val record = HeapDumpRecord(heapDumpTag, idSize, length, records)
-    record
+    HeapDumpRecord(tag, length, stream)
   }
+
 }
-
-object HeapDump {
-  def apply(file: File): Option[HeapDump] = {
-    try {
-      val fileInputStream: FileInputStream = new FileInputStream(file)
-      val dataInputStream: DataInputStream = new DataInputStream(fileInputStream)
-
-      val format: String = readFormat(dataInputStream)
-
-      val sizeOfId: Int = dataInputStream.readInt()
-
-      val startTime: Long = dataInputStream.readLong()
-      val startDate: DateTime = new DateTime(startTime)
-
-      val heapDump = new HeapDump(format = format, idSize = sizeOfId, startDate = startDate, records = dataInputStream)
-      Some(heapDump)
-    } catch {
-      case NonFatal(e) =>
-        println("Failed to parse heap dump")
-        None
-    }
-  }
-
-  private def readFormat(dataInputStream: DataInputStream): String = {
-
-    var currentByte = dataInputStream.readByte()
-    val arrayBuffer = ArrayBuffer.empty[Byte]
-    while(currentByte != 0) {
-      arrayBuffer += currentByte
-      currentByte = dataInputStream.readByte()
-    }
-
-    val format = new String(arrayBuffer.toArray, "UTF8")
-    format
-  }
-}
-
-case class Class(objectId: Long, className: String)
