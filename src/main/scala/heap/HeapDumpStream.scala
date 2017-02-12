@@ -11,7 +11,7 @@ import scala.util.control.NonFatal
   * Created by mehmetgunturkun on 12/02/17.
   */
 
-class HeapDumpStream(private val idSize: Int,
+class HeapDumpStream(val idSize: Int,
                      private val data: DataInputStream) {
   def hasNext: Boolean = data.available() > 0
   def read(): Byte = data.readByte()
@@ -20,6 +20,12 @@ class HeapDumpStream(private val idSize: Int,
   def readInt(): Int = data.readInt()
   def readLong(): Long = data.readLong()
   def readId(): Long = if (idSize == 4) data.readInt().toLong else data.readLong()
+
+  def read(length: Int): Array[Byte] = {
+    val arr: Array[Byte] = Array.ofDim[Byte](length)
+    data.read(arr)
+    arr
+  }
 
   def consume(length: Int): Unit = {
     val nrOfSlots: Int = length / 1000

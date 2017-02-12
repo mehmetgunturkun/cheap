@@ -15,7 +15,8 @@ object HeapDumpTest {
     maybeStream match {
       case Some(stream) =>
         val heapDump = new HeapDump(stream)
-        println("Done!")
+
+        println(s"Done!")
 
       case None =>
 
