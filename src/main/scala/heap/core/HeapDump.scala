@@ -1,15 +1,13 @@
-package heap
+package heap.core
 
 import heap.records._
+
 import scala.collection.mutable.{Map => MMap}
 
 /**
   * Created by mehmetgunturkun on 12/02/17.
   */
 class HeapDump(val stream: HeapDumpStream) {
-
-  private val strings: MMap[Long, String] = MMap.empty
-  private val classes: MMap[Long, Class] = MMap.empty
 
   loadCommonMaps()
 
@@ -28,11 +26,12 @@ class HeapDump(val stream: HeapDumpStream) {
 
     iterateUntilHeapDump {
       case StringRecord(id, content) =>
-        strings(id) = content
+        StringStore.store(id, content)
       case LoadClassRecord(classSerialNumber: Int, classObjectId: Long, stackTraceSerialNumber: Int, classNameStringId: Long) =>
-        val classNameString = strings(classNameStringId)
+        val classNameString = StringStore.get(classNameStringId).get
         val clazz = Class(classObjectId, classNameString)
-        classes(classObjectId) = clazz
+        ClassStore.store(classObjectId, clazz)
+
       case other =>
         //unrecognized tag - do nothing
     }
@@ -52,10 +51,7 @@ class HeapDump(val stream: HeapDumpStream) {
     val tagByte = stream.read()
     val tag: HeapDumpRecordTag = HeapDumpRecordTag(tagByte)
 
-    val ts: Int = stream.readInt()
-    val length: Int = stream.readInt()
-
-    HeapDumpRecord(tag, length, stream)
+    HeapDumpRecord(tag, 100, stream)
   }
 
 }

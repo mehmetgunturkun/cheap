@@ -1,4 +1,4 @@
-package heap
+package heap.core
 
 import java.io.{DataInputStream, File, FileInputStream}
 
@@ -16,8 +16,11 @@ class HeapDumpStream(val idSize: Int,
   def hasNext: Boolean = data.available() > 0
   def read(): Byte = data.readByte()
   def readBoolean(): Boolean = data.readByte() != 0
+  def readChar(): Char = data.readChar()
   def readShort(): Short = data.readShort()
   def readInt(): Int = data.readInt()
+  def readFloat(): Float = data.readFloat()
+  def readDouble(): Double = data.readDouble()
   def readLong(): Long = data.readLong()
   def readId(): Long = if (idSize == 4) data.readInt().toLong else data.readLong()
 

@@ -1,4 +1,4 @@
-package heap.records
+package heap.core
 
 /**
   * Created by mehmetgunturkun on 12/02/17.

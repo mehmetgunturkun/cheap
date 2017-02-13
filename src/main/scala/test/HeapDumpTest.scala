@@ -2,7 +2,7 @@ package test
 
 import java.io.File
 
-import heap.{HeapDump, HeapDumpStream}
+import heap.core.{HeapDump, HeapDumpStream}
 
 /**
   * Created by mehmetgunturkun on 22/01/17.
@@ -15,8 +15,10 @@ object HeapDumpTest {
     maybeStream match {
       case Some(stream) =>
         val heapDump = new HeapDump(stream)
-
         println(s"Done!")
+        while (heapDump.hasNext) {
+          val r1 = heapDump.nextRecord()
+        }
 
       case None =>
 

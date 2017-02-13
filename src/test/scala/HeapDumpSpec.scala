@@ -1,7 +1,8 @@
 import java.io.File
 import java.util.concurrent.TimeUnit
 
-import heap.{HeapDump, HeapDumpRecord, StringRecord}
+import heap.core.HeapDump
+import heap.{HeapDumpRecord, StringRecord}
 import org.specs2.mutable.Specification
 import http.Http
 
