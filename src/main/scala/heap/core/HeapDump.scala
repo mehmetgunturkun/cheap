@@ -39,7 +39,7 @@ class HeapDump(val stream: HeapDumpStream) {
 
   private def nextInternalRecord(): HeapDumpRecord = {
     val tagByte = stream.read()
-    val tag: HeapDumpRecordTag = HeapDumpInternalRecordTag(tagByte)
+    val tag: HeapDumpInternalRecordTag = HeapDumpInternalRecordTag(tagByte)
 
     val ts: Int = stream.readInt()
     val length: Int = stream.readInt()

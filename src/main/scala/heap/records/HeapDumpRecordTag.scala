@@ -3,8 +3,11 @@ package heap.records
 /**
   * Created by mehmetgunturkun on 12/02/17.
   */
-abstract class HeapDumpRecordTag(val tag: Byte)
-abstract class HeapDumpInternalRecordTag(override val tag: Byte) extends HeapDumpRecordTag(tag)
+trait AbstractHeapDumpRecordTag {
+  val tag: Byte
+}
+abstract class HeapDumpRecordTag(override val tag: Byte) extends AbstractHeapDumpRecordTag
+abstract class HeapDumpInternalRecordTag(override val tag: Byte) extends AbstractHeapDumpRecordTag
 
 case object StringTag extends HeapDumpInternalRecordTag(0x01)
 case object LoadClassTag extends HeapDumpInternalRecordTag(0x02)
