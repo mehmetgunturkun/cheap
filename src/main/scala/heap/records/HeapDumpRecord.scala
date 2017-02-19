@@ -18,7 +18,10 @@ case class LoadClassRecord(classSerialNumber: Int,
                            stackTraceSerialNumber: Int,
                            classNameStringId: Long) extends HeapDumpRecord(LoadClassTag)
 
-case class UnloadClassRecord(classSerialNumber: Int) extends HeapDumpRecord(UnloadClassTag)
+case class UnloadClassRecord(classSerialNumber: Int,
+                             classObjectId: Long,
+                             stackTraceSerialNumber: Int,
+                             classNameStringId: Long) extends HeapDumpRecord(UnloadClassTag)
 
 case class StackFrameRecord(stackFrameId: Long,
                             methodNameStringId: Long,
@@ -31,6 +34,16 @@ case class StackTraceRecord(stackTraceSerialNumber: Int,
                             threadSerialNumber: Int,
                             nrOfFrames: Int,
                             stackFrameIds: Array[Long]) extends HeapDumpRecord(StackTraceTag)
+
+case class StartThreadRecord(threadSerialNumber: Int,
+                             threadObjectId: Long,
+                             stackTraceSerialNumber: Int,
+                             threadNameStringId: Long,
+                             threadGroupNameStingId: Long,
+                             threadParentGroupNameStringId: Long) extends HeapDumpRecord(StartThreadTag)
+
+case class EndThreadRecord(threadSerialNumber: Int) extends HeapDumpRecord(EndThreadTag)
+
 case object HeapDumpStartRecord extends HeapDumpRecord(HeapDumpStartTag)
 
 case class RootUnknownRecord(objectId: Long) extends HeapDumpRecord(RootUnknown)
@@ -84,12 +97,11 @@ object HeapDumpRecord {
     tag match {
       case StringTag => parseStringRecord(length, stream)
       case LoadClassTag => parseLoad(length, stream)
-      case UnloadClassTag => parseDefaultRecord(tag, length, stream)
-      case StackFrameTag => parseDefaultRecord(tag, length, stream)
-      case StackTraceTag => parseDefaultRecord(tag, length, stream)
-      case AllocSitesTag => parseDefaultRecord(tag, length, stream)
-      case StartThreadTag => parseDefaultRecord(tag, length, stream)
-      case EndThreadTag => parseDefaultRecord(tag, length, stream)
+      case UnloadClassTag => parseUnload(stream)
+      case StackFrameTag => parseStackFrame(stream)
+      case StackTraceTag => parseStackTrace(stream)
+      case StartThreadTag => parseStartThread(stream)
+      case EndThreadTag => parseEndThread(stream)
       case HeapDumpStartTag => HeapDumpStartRecord
       case any => throw new Exception(s"Unrecognized tag: $any")
     }
@@ -140,19 +152,89 @@ object HeapDumpRecord {
     LoadClassRecord(classSerialNumber, classObjectId, stackTraceSerialNumber, classNameStringId)
   }
 
-  def parseHeapDumpStartRecord(): HeapDumpStartRecord.type  = {
-    // No additional parsing is needed.
-    HeapDumpStartRecord
+  private def parseUnload(data: HeapDumpStream): UnloadClassRecord = {
+    val classSerialNumber: Int = data.readInt()
+    val classObjectId: Long = data.readId()
+    val stackTraceSerialNumber: Int = data.readInt()
+    val classNameStringId: Long = data.readId()
+
+    UnloadClassRecord(
+      classSerialNumber = classSerialNumber,
+      classObjectId = classObjectId,
+      stackTraceSerialNumber = stackTraceSerialNumber,
+      classNameStringId = classNameStringId
+    )
+  }
+
+  private def parseStackFrame(data: HeapDumpStream): StackFrameRecord = {
+    val stackFrameId: Long = data.readId()
+    val methodNameStringId: Long = data.readId()
+    val methodSignatureStringId: Long = data.readId()
+    val sourceFileNameStringId: Long = data.readId()
+    val classSerialNumber: Int = data.readInt()
+
+    val lineNumber: Int = data.readInt()
+
+    StackFrameRecord(
+      stackFrameId = stackFrameId,
+      methodNameStringId = methodNameStringId,
+      methodSignatureStringId = methodSignatureStringId,
+      sourceFileNameStringId = sourceFileNameStringId,
+      classSerialNumber = classSerialNumber,
+      lineNumber = lineNumber
+    )
+  }
+
+  private def parseStackTrace(data: HeapDumpStream): StackTraceRecord = {
+    val stackTraceSerialNumber: Int = data.readInt()
+    val threadSerialNumber: Int = data.readInt()
+    val nrOfFrames = data.readInt()
+
+    val frameIds = Array.ofDim[Long](nrOfFrames)
+    for (i <- 0 until nrOfFrames) {
+      val frameId = data.readId()
+      frameIds(i) = frameId
+    }
+
+    StackTraceRecord(
+      stackTraceSerialNumber = stackTraceSerialNumber,
+      threadSerialNumber = threadSerialNumber,
+      nrOfFrames = nrOfFrames,
+      stackFrameIds = frameIds
+    )
+  }
+
+  private def parseStartThread(data: HeapDumpStream): StartThreadRecord = {
+    val threadSerialNumber: Int = data.readInt()
+    val threadObjectId = data.readLong()
+    val stackTraceSerialNumber = data.readInt()
+
+    val threadNameStringId = data.readLong()
+    val threadGroupNameStringId = data.readLong()
+    val threadParentGroupNameStringId = data.readLong()
+
+    StartThreadRecord(
+      threadSerialNumber = threadSerialNumber,
+      threadObjectId = threadObjectId,
+      stackTraceSerialNumber = stackTraceSerialNumber,
+      threadNameStringId = threadNameStringId,
+      threadGroupNameStingId = threadGroupNameStringId,
+      threadParentGroupNameStringId = threadParentGroupNameStringId
+    )
+  }
+
+  private def parseEndThread(data: HeapDumpStream): EndThreadRecord = {
+    val threadSerialNumber: Int = data.readInt()
+    EndThreadRecord(threadSerialNumber = threadSerialNumber)
   }
 
   // Heap Records
-
-  def parseRootUnknown(data: HeapDumpStream): RootUnknownRecord = {
+  private def parseRootUnknown(data: HeapDumpStream): RootUnknownRecord = {
     val objectId: Long = data.readId()
     RootUnknownRecord(objectId = objectId)
   }
 
-  def parseRootJniGlobal(data: HeapDumpStream): RootJniGlobalRecord = {
+  private def parseRootJniGlobal(data: HeapDumpStream): RootJniGlobalRecord = {
     val objectId: Long = data.readId()
     val jniGlobalRefId: Long = data.readId()
 
@@ -162,7 +244,7 @@ object HeapDumpRecord {
     )
   }
 
-  def parseRootJavaFrame(data: HeapDumpStream): RootJavaFrameRecord = {
+  private def parseRootJavaFrame(data: HeapDumpStream): RootJavaFrameRecord = {
     val threadObjectId: Long = data.readId()
 
     val threadSerialNumber: Int = data.readInt()
@@ -175,7 +257,7 @@ object HeapDumpRecord {
     )
   }
 
-  def parseRootNativeStack(data: HeapDumpStream): RootNativeStackRecord = {
+  private def parseRootNativeStack(data: HeapDumpStream): RootNativeStackRecord = {
     val objectId: Long = data.readId()
     val threadSerialNumber: Int = data.readInt()
 
@@ -185,12 +267,12 @@ object HeapDumpRecord {
     )
   }
 
-  def parseRootStickyClass(data: HeapDumpStream): RootStickyClassRecord = {
+  private def parseRootStickyClass(data: HeapDumpStream): RootStickyClassRecord = {
     val objectId: Long = data.readId()
     RootStickyClassRecord(objectId = objectId)
   }
 
-  def parseRootThreadBlock(data: HeapDumpStream): RootThreadBlockRecord = {
+  private def parseRootThreadBlock(data: HeapDumpStream): RootThreadBlockRecord = {
     val objectId: Long = data.readId()
     val threadSerialNumber: Int = data.readInt()
 
@@ -200,12 +282,12 @@ object HeapDumpRecord {
     )
   }
 
-  def parseRootMonitorUsed(data: HeapDumpStream): RootMonitorUsedRecord = {
+  private def parseRootMonitorUsed(data: HeapDumpStream): RootMonitorUsedRecord = {
     val objectId: Long = data.readId()
     RootMonitorUsedRecord(objectId = objectId)
   }
 
-  def parseRootThreadObject(data: HeapDumpStream): RootThreadObjectRecord = {
+  private def parseRootThreadObject(data: HeapDumpStream): RootThreadObjectRecord = {
     val threadObjectId: Long = data.readId()
     val threadSerialNumber: Int = data.readInt()
     val stackTraceSerialNumber: Int = data.readInt()
@@ -217,7 +299,7 @@ object HeapDumpRecord {
     )
   }
 
-  def parseClassDump(length: Int, data: HeapDumpStream): ClassDumpRecord = {
+  private def parseClassDump(length: Int, data: HeapDumpStream): ClassDumpRecord = {
     val classObjectId: Long = data.readId()
 
     val stackTraceSerialNumber: Int = data.readInt()
@@ -312,7 +394,7 @@ object HeapDumpRecord {
     )
   }
 
-  def parseInstanceDump(data: HeapDumpStream): InstanceDumpRecord = {
+  private def parseInstanceDump(data: HeapDumpStream): InstanceDumpRecord = {
     val objectId = data.readId()
     val stackTraceSerialNumber: Int = data.readInt()
     val classObjectId: Long = data.readId()
@@ -323,7 +405,7 @@ object HeapDumpRecord {
     InstanceDumpRecord(objectId, stackTraceSerialNumber, classObjectId)
   }
 
-  def parsePrimitiveArrayDump(data: HeapDumpStream): PrimitiveArrayRecord = {
+  private def parsePrimitiveArrayDump(data: HeapDumpStream): PrimitiveArrayRecord = {
     val arrayObjectId: Long = data.readId()
     val stackTraceSerialNumber: Int = data.readInt()
 
@@ -357,7 +439,7 @@ object HeapDumpRecord {
     PrimitiveArrayRecord(arrayObjectId, stackTraceSerialNumber, nrOfElements, basicType)
   }
 
-  def parseObjectArrayDump(data: HeapDumpStream): ObjectArrayRecord = {
+  private def parseObjectArrayDump(data: HeapDumpStream): ObjectArrayRecord = {
     val arrayObjectId: Long = data.readId()
 
     val stackTraceSerialNumber: Int = data.readInt()
