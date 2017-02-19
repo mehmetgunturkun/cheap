@@ -88,7 +88,10 @@ case class PrimitiveArrayRecord(arrayObjectId: Long,
                                 nrOfElements: Int,
                                 elementType: BasicType) extends HeapDumpRecord(PrimitiveArrayDump)
 
-case class ObjectArrayRecord(arrayObjectId: Long, stackTraceSerialNumber: Int, nrOfElements: Int, arrayClassObjectId: Long) extends HeapDumpRecord(ObjectArrayDump)
+case class ObjectArrayRecord(arrayObjectId: Long,
+                             stackTraceSerialNumber: Int,
+                             nrOfElements: Int,
+                             arrayClassObjectId: Long) extends HeapDumpRecord(ObjectArrayDump)
 
 
 object HeapDumpRecord {
