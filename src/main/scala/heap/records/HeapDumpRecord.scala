@@ -9,21 +9,52 @@ import heap.core._
 class HeapDumpRecord(val tag: AbstractHeapDumpRecordTag)
 
 case class DefaultHeapDumpRecord(override val tag: AbstractHeapDumpRecordTag) extends HeapDumpRecord(tag)
-case class StringRecord(id: Long, str: String) extends HeapDumpRecord(StringTag)
-case class LoadClassRecord(classSerialNumber: Int, classObjectId: Long, stackTraceSerialNumber: Int, classNameStringId: Long) extends HeapDumpRecord(LoadClassTag)
+
+case class StringRecord(id: Long,
+                        str: String) extends HeapDumpRecord(StringTag)
+
+case class LoadClassRecord(classSerialNumber: Int,
+                           classObjectId: Long,
+                           stackTraceSerialNumber: Int,
+                           classNameStringId: Long) extends HeapDumpRecord(LoadClassTag)
+
 case class UnloadClassRecord(classSerialNumber: Int) extends HeapDumpRecord(UnloadClassTag)
-case class StackFrameRecord(stackFrameId: Long, methodNameStringId: Long, methodSignatureStringId: Long, sourceFileNameStringId: Long, classSerialNumber: Int, lineNumber: Int) extends HeapDumpRecord(StackFrameTag)
-case class StackTraceRecord(stackTraceSerialNumber: Int, threadSerialNumber: Int, nrOfFrames: Int, stackFrameIds: Array[Long]) extends HeapDumpRecord(StackTraceTag)
+
+case class StackFrameRecord(stackFrameId: Long,
+                            methodNameStringId: Long,
+                            methodSignatureStringId: Long,
+                            sourceFileNameStringId: Long,
+                            classSerialNumber: Int,
+                            lineNumber: Int) extends HeapDumpRecord(StackFrameTag)
+
+case class StackTraceRecord(stackTraceSerialNumber: Int,
+                            threadSerialNumber: Int,
+                            nrOfFrames: Int,
+                            stackFrameIds: Array[Long]) extends HeapDumpRecord(StackTraceTag)
 case object HeapDumpStartRecord extends HeapDumpRecord(HeapDumpStartTag)
 
-case class RootUnknownRecord() extends HeapDumpRecord(RootUnknown)
-case class RootJniGlobalRecord() extends  HeapDumpRecord(RootJniGlobal)
-case class RootJavaFrameRecord() extends HeapDumpRecord(RootJavaFrame)
-case class RootNativeStackRecord() extends HeapDumpRecord(RootNativeStack)
-case class RootStickyClassRecord() extends HeapDumpRecord(RootStickyClass)
-case class RootThreadBlockRecord() extends HeapDumpRecord(RootThreadBlock)
-case class RootMonitorUsedRecord() extends HeapDumpRecord(RootMonitorUsed)
-case class RootThreadObjectRecord() extends HeapDumpRecord(RootThreadObject)
+case class RootUnknownRecord(objectId: Long) extends HeapDumpRecord(RootUnknown)
+
+case class RootJniGlobalRecord(objectId: Long,
+                               jniGlobalRefId: Long) extends  HeapDumpRecord(RootJniGlobal)
+
+case class RootJavaFrameRecord(threadObjectId: Long,
+                               threadSerialNumber: Int,
+                               stackTraceSerialNumber: Int) extends HeapDumpRecord(RootJavaFrame)
+
+case class RootNativeStackRecord(objectId: Long,
+                                 threadSerialNumber: Int) extends HeapDumpRecord(RootNativeStack)
+
+case class RootStickyClassRecord(objectId: Long) extends HeapDumpRecord(RootStickyClass)
+
+case class RootThreadBlockRecord(objectId: Long,
+                                 threadSerialNumber: Int) extends HeapDumpRecord(RootThreadBlock)
+
+case class RootMonitorUsedRecord(objectId: Long) extends HeapDumpRecord(RootMonitorUsed)
+
+case class RootThreadObjectRecord(threadObjectId: Long,
+                                  threadSerialNumber: Int,
+                                  stackTraceSerialNumber: Int) extends HeapDumpRecord(RootThreadObject)
 
 case class ClassDumpRecord(classObjectId: Long,
                            stackTraceSerialNumber: Int,
@@ -34,15 +65,22 @@ case class ClassDumpRecord(classObjectId: Long,
                            reserved1: Long,
                            reserved2: Long,
                            instanceSize: Int) extends HeapDumpRecord(ClassDump)
-case class InstanceDumpRecord() extends HeapDumpRecord(InstanceDump)
-case class ObjectArrayRecord() extends HeapDumpRecord(ObjectArrayDump)
+
+case class InstanceDumpRecord(objectId: Long,
+                              threadSerialNumber: Int,
+                              classObjectId: Long) extends HeapDumpRecord(InstanceDump)
+
 case class PrimitiveArrayRecord(arrayObjectId: Long,
                                 stackTraceSerialNumber: Int,
-                                nrOfElements: Int, elementType: BasicType) extends HeapDumpRecord(PrimitiveArrayDump)
+                                nrOfElements: Int,
+                                elementType: BasicType) extends HeapDumpRecord(PrimitiveArrayDump)
+
+case class ObjectArrayRecord(arrayObjectId: Long, stackTraceSerialNumber: Int, nrOfElements: Int, arrayClassObjectId: Long) extends HeapDumpRecord(ObjectArrayDump)
+
 
 object HeapDumpRecord {
   def apply(tag: HeapDumpInternalRecordTag, length: Int, stream: HeapDumpStream): HeapDumpRecord = {
-    println("Tag: " + tag)
+    println("Inernal Tag: " + tag)
     tag match {
       case StringTag => parseStringRecord(length, stream)
       case LoadClassTag => parseLoad(length, stream)
@@ -107,66 +145,76 @@ object HeapDumpRecord {
     HeapDumpStartRecord
   }
 
-  // Heap Internals
+  // Heap Records
 
   def parseRootUnknown(data: HeapDumpStream): RootUnknownRecord = {
-    val objectId = data.readId()
-    RootUnknownRecord()
+    val objectId: Long = data.readId()
+    RootUnknownRecord(objectId = objectId)
   }
 
   def parseRootJniGlobal(data: HeapDumpStream): RootJniGlobalRecord = {
-    val objectId = data.readId()
-    val jniGlobalRefId = data.readId()
+    val objectId: Long = data.readId()
+    val jniGlobalRefId: Long = data.readId()
 
-    RootJniGlobalRecord()
+    RootJniGlobalRecord(
+      objectId = objectId,
+      jniGlobalRefId = jniGlobalRefId
+    )
   }
 
   def parseRootJavaFrame(data: HeapDumpStream): RootJavaFrameRecord = {
-    val threadObjectId = data.readId()
-
-    val clazz: Option[Class] = ClassStore.get(threadObjectId)
-    println(clazz)
+    val threadObjectId: Long = data.readId()
 
     val threadSerialNumber: Int = data.readInt()
     val stackTraceSerialNumber: Int = data.readInt()
 
-    RootJavaFrameRecord()
+    RootJavaFrameRecord(
+      threadObjectId = threadObjectId,
+      threadSerialNumber = threadSerialNumber,
+      stackTraceSerialNumber = stackTraceSerialNumber
+    )
   }
 
   def parseRootNativeStack(data: HeapDumpStream): RootNativeStackRecord = {
-    val objectId = data.readId()
+    val objectId: Long = data.readId()
     val threadSerialNumber: Int = data.readInt()
 
-    RootNativeStackRecord()
+    RootNativeStackRecord(
+      objectId = objectId,
+      threadSerialNumber = threadSerialNumber
+    )
   }
 
   def parseRootStickyClass(data: HeapDumpStream): RootStickyClassRecord = {
     val objectId: Long = data.readId()
-    RootStickyClassRecord()
+    RootStickyClassRecord(objectId = objectId)
   }
 
   def parseRootThreadBlock(data: HeapDumpStream): RootThreadBlockRecord = {
-    val objectId = data.readId()
+    val objectId: Long = data.readId()
     val threadSerialNumber: Int = data.readInt()
 
-    RootThreadBlockRecord()
+    RootThreadBlockRecord(
+      objectId = objectId,
+      threadSerialNumber = threadSerialNumber
+    )
   }
 
   def parseRootMonitorUsed(data: HeapDumpStream): RootMonitorUsedRecord = {
-    val objectId = data.readId()
-    RootMonitorUsedRecord()
+    val objectId: Long = data.readId()
+    RootMonitorUsedRecord(objectId = objectId)
   }
 
   def parseRootThreadObject(data: HeapDumpStream): RootThreadObjectRecord = {
-    val threadObjectId = data.readId()
-
-    val clazz: Option[Class] = ClassStore.get(threadObjectId)
-    println(clazz)
-
+    val threadObjectId: Long = data.readId()
     val threadSerialNumber: Int = data.readInt()
     val stackTraceSerialNumber: Int = data.readInt()
 
-    RootThreadObjectRecord()
+    RootThreadObjectRecord(
+      threadObjectId = threadObjectId,
+      threadSerialNumber = threadSerialNumber,
+      stackTraceSerialNumber = stackTraceSerialNumber
+    )
   }
 
   def parseClassDump(length: Int, data: HeapDumpStream): ClassDumpRecord = {
@@ -269,19 +317,17 @@ object HeapDumpRecord {
     val stackTraceSerialNumber: Int = data.readInt()
     val classObjectId: Long = data.readId()
 
-    val clazz = ClassStore.get(classObjectId)
-    println(clazz)
-
+    // TODO How to bind this data to class
     val nrOfBytes: Int = data.readInt()
-
     val arr = data.read(nrOfBytes)
-    InstanceDumpRecord()
+    InstanceDumpRecord(objectId, stackTraceSerialNumber, classObjectId)
   }
 
   def parsePrimitiveArrayDump(data: HeapDumpStream): PrimitiveArrayRecord = {
-    val arrayObjectId = data.readId()
-    val stackTraceSerialNumber = data.readInt()
-    val nrOfElements = data.readInt()
+    val arrayObjectId: Long = data.readId()
+    val stackTraceSerialNumber: Int = data.readInt()
+
+    val nrOfElements: Int = data.readInt()
     val typeByte = data.read()
     val basicType = BasicType(typeByte)
 
@@ -312,18 +358,23 @@ object HeapDumpRecord {
   }
 
   def parseObjectArrayDump(data: HeapDumpStream): ObjectArrayRecord = {
-    val arrayObjectId = data.readId()
+    val arrayObjectId: Long = data.readId()
 
-    val stackTraceSerialNumber = data.readInt()
-    val nrOfElements = data.readInt()
+    val stackTraceSerialNumber: Int = data.readInt()
+    val nrOfElements: Int = data.readInt()
 
-    val arrayClassObjectId = data.readId()
+    val arrayClassObjectId: Long = data.readId()
     println(ClassStore.get(arrayClassObjectId))
 
     for (i <- 0 until nrOfElements) {
       val elementId = data.readId()
     }
 
-    ObjectArrayRecord()
+    ObjectArrayRecord(
+      arrayObjectId = arrayObjectId,
+      stackTraceSerialNumber = stackTraceSerialNumber,
+      nrOfElements = nrOfElements,
+      arrayClassObjectId = arrayClassObjectId
+    )
   }
 }
