@@ -1,4 +1,6 @@
-package heap.core
+package heap.persistence
+
+import heap.core.Class
 
 import scala.collection.mutable.{Map => MMap}
 
@@ -11,7 +13,6 @@ trait Store[T] {
 }
 
 trait InMemoryStore[T] {
-
   private val map: MMap[Long, T] = MMap.empty
 
   def store(key: Long, item: T) = map += (key -> item)

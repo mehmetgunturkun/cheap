@@ -1,2 +1,4 @@
 CHeap
 New tool to parse Java Memory Heap with a reasonable amount of memory
+
+Reference for structure of heap dump: https://java.net/downloads/heap-snapshot/hprof-binary-format.html

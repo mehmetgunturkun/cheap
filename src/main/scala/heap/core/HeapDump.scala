@@ -1,5 +1,6 @@
 package heap.core
 
+import heap.persistence.{ClassStore, StringStore}
 import heap.records._
 
 import scala.collection.mutable.{Map => MMap}

@@ -2,6 +2,7 @@ package heap.records
 
 import heap.core.{BasicType, HeapDumpStream, LongType}
 import heap.core._
+import heap.persistence.ClassStore
 
 /**
   * Created by mehmetgunturkun on 12/02/17.
