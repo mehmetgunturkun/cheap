@@ -1,6 +1,7 @@
 package heap.persistence
 
 import heap.core.Class
+import heap.records.ClassDumpRecord
 
 import scala.collection.mutable.{Map => MMap}
 
@@ -23,3 +24,4 @@ trait InMemoryStore[T] {
 
 object StringStore extends InMemoryStore[String]
 object ClassStore extends InMemoryStore[Class]
+object ClassDumpStore extends InMemoryStore[ClassDumpRecord]

@@ -1,10 +1,9 @@
 package heap.records
 
-import java.nio.ByteBuffer
-
-import heap.core.{BasicType, HeapDumpStream, LongType}
+import scala.collection.mutable.{LinkedHashMap => LMap}
+import heap.core.{HeapDumpStream, LongType, Type}
 import heap.core._
-import heap.persistence.{ClassStore, StringStore}
+import heap.persistence.{ClassDumpStore, ClassStore, StringStore}
 
 /**
   * Created by mehmetgunturkun on 12/02/17.
@@ -80,16 +79,18 @@ case class ClassDumpRecord(classObjectId: Long,
                            protectionDomainObjectId: Long,
                            reserved1: Long,
                            reserved2: Long,
-                           instanceSize: Int) extends HeapDumpRecord(ClassDump)
+                           instanceSize: Int,
+                           fields: LMap[Long, Type]) extends HeapDumpRecord(ClassDump)
 
 case class InstanceDumpRecord(objectId: Long,
                               threadSerialNumber: Int,
-                              classObjectId: Long) extends HeapDumpRecord(InstanceDump)
+                              classObjectId: Long,
+                              attributes: LMap[Long, Value]) extends HeapDumpRecord(InstanceDump)
 
 case class PrimitiveArrayRecord(arrayObjectId: Long,
                                 stackTraceSerialNumber: Int,
                                 nrOfElements: Int,
-                                elementType: BasicType) extends HeapDumpRecord(PrimitiveArrayDump)
+                                elementType: Type) extends HeapDumpRecord(PrimitiveArrayDump)
 
 case class ObjectArrayRecord(arrayObjectId: Long,
                              stackTraceSerialNumber: Int,
@@ -323,73 +324,38 @@ object HeapDumpRecord {
 
     val instancesSizeInBytes: Int = data.readInt()
 
+    //TODO Keep these constants
     val nrOfConstants: Short = data.readShort()
     for (i <- 0 until nrOfConstants) {
       val constantPoolIndex = data.readShort()
 
       val dataType: Byte = data.read()
-      val basicType = BasicType(dataType)
+      val basicType = Type(dataType)
 
-      basicType match {
-        case ObjectType =>
-          val objectId = data.readId()
-        case BooleanType =>
-          val value: Boolean = data.readBoolean()
-        case CharType =>
-          val value = data.readChar()
-        case FloatType =>
-          val value = data.readFloat()
-        case DoubleType =>
-          val value = data.readDouble()
-        case ByteType =>
-          val value = data.read()
-        case ShortType =>
-          val value = data.readShort()
-        case IntType =>
-          val value = data.readInt()
-        case LongType =>
-          val value = data.readLong()
-      }
+      val value: Value = Value(data, basicType)
     }
 
+    //TODO Keep these static values
     val nrOfStaticFields: Short = data.readShort()
     for (i <- 0 until nrOfStaticFields) {
       val fieldNameStringId = data.readId()
 
       val dataType: Byte = data.read()
-      val basicType = BasicType(dataType)
+      val basicType = Type(dataType)
 
-      basicType match {
-        case ObjectType =>
-          val objectId = data.readId()
-        case BooleanType =>
-          val value: Boolean = data.readBoolean()
-        case CharType =>
-          val value = data.readChar()
-        case FloatType =>
-          val value = data.readFloat()
-        case DoubleType =>
-          val value = data.readDouble()
-        case ByteType =>
-          val value = data.read()
-        case ShortType =>
-          val value = data.readShort()
-        case IntType =>
-          val value = data.readInt()
-        case LongType =>
-          val value = data.readLong()
-      }
+      val value: Value = Value(data, basicType)
     }
 
+    val fields: LMap[Long, Type] = LMap.empty
     val nrOfFields: Short = data.readShort()
     for (i <- 0 until nrOfFields) {
-      val fieldNameStringId = data.readId()
+      val fieldNameStringId: Long = data.readId()
+      val fieldType = Type(data.read())
 
-      val dataType = data.read()
-      val basicType = BasicType(dataType)
+      fields += fieldNameStringId -> fieldType
     }
 
-    ClassDumpRecord(
+    val record = ClassDumpRecord(
       classObjectId = classObjectId,
       stackTraceSerialNumber = stackTraceSerialNumber,
       superClassObjectId = superClassObjectId,
@@ -398,8 +364,12 @@ object HeapDumpRecord {
       protectionDomainObjectId = protectionDomainObjectId,
       reserved1 = reserved1,
       reserved2 = reserved2,
-      instanceSize = instancesSizeInBytes
+      instanceSize = instancesSizeInBytes,
+      fields = fields
     )
+
+    ClassDumpStore.store(classObjectId, record)
+    record
   }
 
   private def parseInstanceDump(data: HeapDumpStream): InstanceDumpRecord = {
@@ -407,10 +377,30 @@ object HeapDumpRecord {
     val stackTraceSerialNumber: Int = data.readInt()
     val classObjectId: Long = data.readId()
 
-    // TODO How to bind this data to class
+    val maybeClazzDump = ClassDumpStore.get(classObjectId)
+
     val nrOfBytes: Int = data.readInt()
     val arr = data.read(nrOfBytes)
-    InstanceDumpRecord(objectId, stackTraceSerialNumber, classObjectId)
+    val instanceValueStream = HeapDumpStream.fromByteBuffer(data.idSize, arr)
+
+    val attributes: LMap[Long, Value] = LMap.empty[Long, Value]
+
+    maybeClazzDump.foreach { clazz =>
+      val fields = clazz.fields
+      fields.foreach {
+        case (fieldNameStringId, fieldType) =>
+          val fieldName = StringStore.get(fieldNameStringId)
+          val attributeValue: Value = Value(instanceValueStream, fieldType)
+          attributes += (fieldNameStringId -> attributeValue)
+      }
+    }
+
+    InstanceDumpRecord(
+      objectId = objectId,
+      threadSerialNumber = stackTraceSerialNumber,
+      classObjectId = classObjectId,
+      attributes = attributes
+    )
   }
 
   private def parsePrimitiveArrayDump(data: HeapDumpStream): PrimitiveArrayRecord = {
@@ -419,7 +409,7 @@ object HeapDumpRecord {
 
     val nrOfElements: Int = data.readInt()
     val typeByte = data.read()
-    val basicType = BasicType(typeByte)
+    val basicType = Type(typeByte)
 
     for (i <- 0 until nrOfElements) {
       basicType match {
