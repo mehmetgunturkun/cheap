@@ -1,8 +1,10 @@
 package heap.records
 
+import java.nio.ByteBuffer
+
 import heap.core.{BasicType, HeapDumpStream, LongType}
 import heap.core._
-import heap.persistence.ClassStore
+import heap.persistence.{ClassStore, StringStore}
 
 /**
   * Created by mehmetgunturkun on 12/02/17.
@@ -97,7 +99,6 @@ case class ObjectArrayRecord(arrayObjectId: Long,
 
 object HeapDumpRecord {
   def apply(tag: HeapDumpInternalRecordTag, length: Int, stream: HeapDumpStream): HeapDumpRecord = {
-    println("Inernal Tag: " + tag)
     tag match {
       case StringTag => parseStringRecord(length, stream)
       case LoadClassTag => parseLoad(length, stream)
@@ -306,6 +307,9 @@ object HeapDumpRecord {
   private def parseClassDump(length: Int, data: HeapDumpStream): ClassDumpRecord = {
     val classObjectId: Long = data.readId()
 
+    val maybeClazz: Option[Class] = ClassStore.get(classObjectId)
+    println(s"Clazz: $maybeClazz")
+
     val stackTraceSerialNumber: Int = data.readInt()
 
     val superClassObjectId: Long = data.readId()
@@ -348,8 +352,8 @@ object HeapDumpRecord {
       }
     }
 
-    val nrOfStaticInstances: Short = data.readShort()
-    for (i <- 0 until nrOfStaticInstances) {
+    val nrOfStaticFields: Short = data.readShort()
+    for (i <- 0 until nrOfStaticFields) {
       val fieldNameStringId = data.readId()
 
       val dataType: Byte = data.read()
@@ -377,8 +381,8 @@ object HeapDumpRecord {
       }
     }
 
-    val nrOfInstances: Short = data.readShort()
-    for (i <- 0 until nrOfInstances) {
+    val nrOfFields: Short = data.readShort()
+    for (i <- 0 until nrOfFields) {
       val fieldNameStringId = data.readId()
 
       val dataType = data.read()
