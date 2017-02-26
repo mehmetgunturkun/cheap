@@ -9,7 +9,7 @@ import heap.core.{HeapDump, HeapDumpStream}
   */
 object HeapDumpTest {
   def main(args: Array[String]): Unit = {
-    val file = new File("data/smallDump.hprof")
+    val file = new File("data/largeDump.hprof")
     val maybeStream: Option[HeapDumpStream] = HeapDumpStream.fromFile(file)
 
     maybeStream match {

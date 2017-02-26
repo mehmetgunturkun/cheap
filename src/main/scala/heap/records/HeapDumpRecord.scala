@@ -80,12 +80,13 @@ case class ClassDumpRecord(classObjectId: Long,
                            reserved1: Long,
                            reserved2: Long,
                            instanceSize: Int,
+                           staticFields: LMap[Long, Value],
                            fields: LMap[Long, Type]) extends HeapDumpRecord(ClassDump)
 
 case class InstanceDumpRecord(objectId: Long,
                               threadSerialNumber: Int,
                               classObjectId: Long,
-                              attributes: LMap[Long, Value]) extends HeapDumpRecord(InstanceDump)
+                              attributeStream: HeapDumpStream) extends HeapDumpRecord(InstanceDump)
 
 case class PrimitiveArrayRecord(arrayObjectId: Long,
                                 stackTraceSerialNumber: Int,
@@ -308,9 +309,6 @@ object HeapDumpRecord {
   private def parseClassDump(length: Int, data: HeapDumpStream): ClassDumpRecord = {
     val classObjectId: Long = data.readId()
 
-    val maybeClazz: Option[Class] = ClassStore.get(classObjectId)
-    println(s"Clazz: $maybeClazz")
-
     val stackTraceSerialNumber: Int = data.readInt()
 
     val superClassObjectId: Long = data.readId()
@@ -324,7 +322,7 @@ object HeapDumpRecord {
 
     val instancesSizeInBytes: Int = data.readInt()
 
-    //TODO Keep these constants
+    //TODO There is no need to keep constants for now!
     val nrOfConstants: Short = data.readShort()
     for (i <- 0 until nrOfConstants) {
       val constantPoolIndex = data.readShort()
@@ -335,7 +333,7 @@ object HeapDumpRecord {
       val value: Value = Value(data, basicType)
     }
 
-    //TODO Keep these static values
+    val staticFields: LMap[Long, Value] = LMap.empty
     val nrOfStaticFields: Short = data.readShort()
     for (i <- 0 until nrOfStaticFields) {
       val fieldNameStringId = data.readId()
@@ -344,6 +342,7 @@ object HeapDumpRecord {
       val basicType = Type(dataType)
 
       val value: Value = Value(data, basicType)
+      staticFields += (fieldNameStringId -> value)
     }
 
     val fields: LMap[Long, Type] = LMap.empty
@@ -365,6 +364,7 @@ object HeapDumpRecord {
       reserved1 = reserved1,
       reserved2 = reserved2,
       instanceSize = instancesSizeInBytes,
+      staticFields = staticFields,
       fields = fields
     )
 
@@ -381,25 +381,13 @@ object HeapDumpRecord {
 
     val nrOfBytes: Int = data.readInt()
     val arr = data.read(nrOfBytes)
-    val instanceValueStream = HeapDumpStream.fromByteBuffer(data.idSize, arr)
-
-    val attributes: LMap[Long, Value] = LMap.empty[Long, Value]
-
-    maybeClazzDump.foreach { clazz =>
-      val fields = clazz.fields
-      fields.foreach {
-        case (fieldNameStringId, fieldType) =>
-          val fieldName = StringStore.get(fieldNameStringId)
-          val attributeValue: Value = Value(instanceValueStream, fieldType)
-          attributes += (fieldNameStringId -> attributeValue)
-      }
-    }
+    val instanceValueStream: HeapDumpStream = HeapDumpStream.fromByteBuffer(data.idSize, arr)
 
     InstanceDumpRecord(
       objectId = objectId,
       threadSerialNumber = stackTraceSerialNumber,
       classObjectId = classObjectId,
-      attributes = attributes
+      attributeStream = instanceValueStream
     )
   }
 
