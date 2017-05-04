@@ -110,12 +110,13 @@ object HeapDumpRecord {
       case StartThreadTag => parseStartThread(stream)
       case EndThreadTag => parseEndThread(stream)
       case HeapDumpStartTag => HeapDumpStartRecord
-      case any => throw new Exception(s"Unrecognized tag: $any")
+//      case any => throw new Exception(s"Unrecognized tag: $any")
+      case any => UnrecognizedHeapDumpRecord
     }
   }
 
   def apply(tag: HeapDumpRecordTag, length: Int, stream: HeapDumpStream): HeapDumpRecord = {
-    println("Tag: " + tag)
+//    println("Tag: " + tag)
     tag match {
       case RootUnknown => parseRootUnknown(stream)
       case RootJniGlobal => parseRootJniGlobal(stream)
@@ -129,7 +130,8 @@ object HeapDumpRecord {
       case InstanceDump => parseInstanceDump(stream)
       case PrimitiveArrayDump => parsePrimitiveArrayDump(stream)
       case ObjectArrayDump => parseObjectArrayDump(stream)
-      case any => throw new Exception(s"Unrecognized tag: $any")
+//      case any => throw new Exception(s"Unrecognized tag: $any")
+      case any => UnrecognizedHeapDumpRecord
     }
   }
 
@@ -432,7 +434,7 @@ object HeapDumpRecord {
     val nrOfElements: Int = data.readInt()
 
     val arrayClassObjectId: Long = data.readId()
-    println(ClassStore.get(arrayClassObjectId))
+//    println(ClassStore.get(arrayClassObjectId))
 
     for (i <- 0 until nrOfElements) {
       val elementId = data.readId()
@@ -446,3 +448,7 @@ object HeapDumpRecord {
     )
   }
 }
+
+object UnrecognizedHeapDumpRecordTag extends HeapDumpRecordTag(0x00)
+
+object UnrecognizedHeapDumpRecord extends HeapDumpRecord(UnrecognizedHeapDumpRecordTag)

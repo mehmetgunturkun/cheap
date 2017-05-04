@@ -15,24 +15,23 @@ class HeapDump(val stream: HeapDumpStream) {
   def hasNext = stream.hasNext
 
   private def loadCommonMaps(): Unit = {
-    def iterateUntilHeapDump(f: HeapDumpRecord => Unit): Unit = {
+    def iterateUntilHeapDumpStart(f: HeapDumpRecord => Unit): Unit = {
       val record: HeapDumpRecord = nextInternalRecord()
       record.tag match {
         case HeapDumpStartTag => {}
         case other =>
           f(record)
-          iterateUntilHeapDump(f)
+          iterateUntilHeapDumpStart(f)
       }
     }
 
-    iterateUntilHeapDump {
+    iterateUntilHeapDumpStart {
       case StringRecord(id, content) =>
         StringStore.store(id, content)
       case LoadClassRecord(classSerialNumber: Int, classObjectId: Long, stackTraceSerialNumber: Int, classNameStringId: Long) =>
         val classNameString = StringStore.get(classNameStringId).get
         val clazz = Class(classObjectId, classNameString)
         ClassStore.store(classObjectId, clazz)
-
       case other =>
         //unrecognized tag - do nothing
     }

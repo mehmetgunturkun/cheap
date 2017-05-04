@@ -84,5 +84,5 @@ object HeapDumpRecordTag {
     tagList.map(tag => tag.tag -> tag).toMap
   }
 
-  def apply(tag: Byte): HeapDumpRecordTag = internalRecords(tag)
+  def apply(tag: Byte): HeapDumpRecordTag = internalRecords.getOrElse(tag, UnrecognizedHeapDumpRecordTag)
 }
