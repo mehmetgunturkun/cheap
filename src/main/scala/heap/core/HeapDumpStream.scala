@@ -1,6 +1,6 @@
 package heap.core
 
-import java.io.{DataInputStream, File, FileInputStream}
+import java.io._
 import java.nio.ByteBuffer
 
 import org.joda.time.DateTime
@@ -97,7 +97,7 @@ class HeapDumpStreamFromDByteBuffer(val idSize: Int,
 object HeapDumpStream {
   def fromFile(file: File): Option[HeapDumpStream] = {
     try {
-      val fileInputStream: FileInputStream = new FileInputStream(file)
+      val fileInputStream: InputStream = new BufferedInputStream(new FileInputStream(file), 8192 * 2)
       val dataInputStream: DataInputStream = new DataInputStream(fileInputStream)
 
       val format: String = readFormat(dataInputStream)
